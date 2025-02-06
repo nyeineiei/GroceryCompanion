@@ -7,14 +7,15 @@ export default function HomePage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  if (user?.role === "customer") {
-    setLocation("/orders");
-    return null;
-  }
-
-  if (user?.role === "shopper") {
-    setLocation("/dashboard");
-    return null;
+  // Check user role and redirect accordingly
+  if (user) {
+    if (user.role === "customer") {
+      setLocation("/orders");
+      return null;
+    } else if (user.role === "shopper") {
+      setLocation("/dashboard");
+      return null;
+    }
   }
 
   return (
