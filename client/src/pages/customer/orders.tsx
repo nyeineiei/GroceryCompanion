@@ -171,7 +171,12 @@ export default function CustomerOrders() {
     ...order,
     total: order.total ?? 0,
     serviceFee: order.serviceFee ?? 5.00,
-    items: order.items ?? []
+    items: Array.isArray(order.items) ? order.items.map(item => ({
+      name: item.name ?? '',
+      quantity: item.quantity ?? 1,
+      price: item.price ?? 0,
+      purchased: item.purchased ?? false
+    })) : []
   })) as SafeOrder[];
 
   return (
