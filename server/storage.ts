@@ -91,11 +91,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOrdersByCustomer(customerId: number): Promise<Order[]> {
-    return db
+    const orders = await db
       .select()
       .from(orders)
       .where(eq(orders.customerId, customerId))
       .orderBy(desc(orders.createdAt));
+
+    // Add user-specific order numbers
+    return orders.map((order, index) => ({
+      ...order,
+      displayOrderNumber: orders.length - index, // Reverse index since orders are sorted by desc
+    }));
   }
 
   async getOrdersByShopper(shopperId: number): Promise<Order[]> {

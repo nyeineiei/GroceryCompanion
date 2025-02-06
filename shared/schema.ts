@@ -79,5 +79,7 @@ export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type InsertReview = z.infer<typeof insertReviewSchema>;
 
 export type User = typeof users.$inferSelect;
-export type Order = typeof orders.$inferSelect;
+export type Order = typeof orders.$inferSelect & {
+  displayOrderNumber?: number;
+};
 export type Review = typeof reviews.$inferSelect;
