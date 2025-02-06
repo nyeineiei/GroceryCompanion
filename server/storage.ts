@@ -88,6 +88,8 @@ export class MemStorage implements IStorage {
       shopperId: null,
       total: 0,
       createdAt: new Date(),
+      items: order.items ?? [],
+      notes: order.notes ?? null,
     };
     this.orders.set(id, newOrder);
     return newOrder;
@@ -127,8 +129,8 @@ export class MemStorage implements IStorage {
   async assignShopper(orderId: number, shopperId: number): Promise<Order> {
     const order = await this.getOrder(orderId);
     if (!order) throw new Error("Order not found");
-    
-    const updated = { ...order, shopperId, status: "accepted" };
+
+    const updated: Order = { ...order, shopperId, status: "accepted" as const };
     this.orders.set(orderId, updated);
     return updated;
   }
@@ -139,20 +141,27 @@ export class MemStorage implements IStorage {
     toId: number;
   }): Promise<Review> {
     const id = this.currentReviewId++;
-    const newReview: Review = { ...review, id };
+    const newReview: Review = {
+      ...review,
+      id,
+      orderId: review.orderId,
+      fromId: review.fromId,
+      toId: review.toId,
+      comment: review.comment ?? null,
+    };
     this.reviews.set(id, newReview);
-    
+
     // Update user rating
     const userReviews = await this.getReviewsByUser(review.toId);
     const totalRating = userReviews.reduce((sum, r) => sum + r.rating, 0);
     const avgRating = totalRating / userReviews.length;
-    
+
     const user = await this.getUser(review.toId);
     if (user) {
       const updated = { ...user, rating: avgRating };
       this.users.set(user.id, updated);
     }
-    
+
     return newReview;
   }
 

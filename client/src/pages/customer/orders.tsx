@@ -138,7 +138,7 @@ export default function CustomerOrders() {
                     Order #{order.id}
                   </CardTitle>
                   <span className="text-sm text-muted-foreground">
-                    {format(new Date(order.createdAt), "MMM d, yyyy h:mm a")}
+                    {order.createdAt && format(new Date(order.createdAt), "MMM d, yyyy h:mm a")}
                   </span>
                 </div>
               </CardHeader>
@@ -147,7 +147,7 @@ export default function CustomerOrders() {
                   <div>
                     <h3 className="font-medium mb-2">Items:</h3>
                     <ul className="list-disc list-inside text-muted-foreground">
-                      {order.items.map((item, i) => (
+                      {order.items?.map((item, i) => (
                         <li key={i}>{item}</li>
                       ))}
                     </ul>
@@ -161,7 +161,7 @@ export default function CustomerOrders() {
                 </div>
               </CardContent>
               <CardFooter>
-                {order.status === "completed" && !order.shopperId && (
+                {order.status === "completed" && order.shopperId && (
                   <div className="flex gap-2">
                     {[1, 2, 3, 4, 5].map((rating) => (
                       <Button

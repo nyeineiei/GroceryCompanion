@@ -20,7 +20,6 @@ import {
   Truck,
   Check,
   Star,
-  CircleDollarSign,
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -83,7 +82,7 @@ export default function ShopperDashboard() {
     },
   });
 
-  const getNextStatus = (currentStatus: Order["status"]) => {
+  const getNextStatus = (currentStatus: Order["status"]): Order["status"] | null => {
     switch (currentStatus) {
       case "accepted":
         return "shopping";
@@ -114,7 +113,9 @@ export default function ShopperDashboard() {
             <h1 className="text-3xl font-bold">Shopper Dashboard</h1>
             <div className="flex items-center gap-2 mt-2">
               <Star className="h-5 w-5 fill-yellow-400 text-yellow-400" />
-              <span className="font-medium">{user?.rating.toFixed(1)}</span>
+              <span className="font-medium">
+                {(user?.rating ?? 5.0).toFixed(1)}
+              </span>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -122,7 +123,7 @@ export default function ShopperDashboard() {
               Available for orders
             </span>
             <Switch
-              checked={user?.isAvailable}
+              checked={user?.isAvailable ?? false}
               onCheckedChange={(checked) => availabilityMutation.mutate(checked)}
             />
           </div>
@@ -145,7 +146,7 @@ export default function ShopperDashboard() {
                       <div>
                         <h3 className="font-medium mb-2">Items:</h3>
                         <ul className="list-disc list-inside text-muted-foreground">
-                          {order.items.map((item, i) => (
+                          {order.items?.map((item, i) => (
                             <li key={i}>{item}</li>
                           ))}
                         </ul>
@@ -192,7 +193,8 @@ export default function ShopperDashboard() {
                     Order #{order.id}
                   </CardTitle>
                   <span className="text-sm text-muted-foreground">
-                    {format(new Date(order.createdAt), "MMM d, yyyy h:mm a")}
+                    {order.createdAt && 
+                      format(new Date(order.createdAt), "MMM d, yyyy h:mm a")}
                   </span>
                 </div>
               </CardHeader>
@@ -201,7 +203,7 @@ export default function ShopperDashboard() {
                   <div>
                     <h3 className="font-medium mb-2">Items:</h3>
                     <ul className="list-disc list-inside text-muted-foreground">
-                      {order.items.map((item, i) => (
+                      {order.items?.map((item, i) => (
                         <li key={i}>{item}</li>
                       ))}
                     </ul>
@@ -217,12 +219,15 @@ export default function ShopperDashboard() {
               <CardFooter className="flex justify-between">
                 {order.status !== "completed" && (
                   <Button
-                    onClick={() =>
-                      updateStatusMutation.mutate({
-                        orderId: order.id,
-                        status: getNextStatus(order.status)!,
-                      })
-                    }
+                    onClick={() => {
+                      const nextStatus = getNextStatus(order.status);
+                      if (nextStatus) {
+                        updateStatusMutation.mutate({
+                          orderId: order.id,
+                          status: nextStatus,
+                        });
+                      }
+                    }}
                     disabled={updateStatusMutation.isPending}
                   >
                     {updateStatusMutation.isPending && (
