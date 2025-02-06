@@ -33,13 +33,18 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 
-interface OrderItem {
+type OrderItem = {
   name: string;
   quantity: number;
   price: number;
   purchased: boolean;
-}
+};
 
+type SafeOrder = Order & {
+  total: number;
+  serviceFee: number;
+  items: OrderItem[];
+};
 
 export default function ShopperDashboard() {
   const { user } = useAuth();
@@ -143,6 +148,22 @@ export default function ShopperDashboard() {
     );
   }
 
+  // Convert pending orders to safe orders with defaults
+  const safePendingOrders = pendingOrders?.map(order => ({
+    ...order,
+    total: order.total ?? 0,
+    serviceFee: order.serviceFee ?? 5.00,
+    items: Array.isArray(order.items) ? order.items : []
+  })) as SafeOrder[];
+
+  // Convert my orders to safe orders with defaults
+  const safeMyOrders = myOrders?.map(order => ({
+    ...order,
+    total: order.total ?? 0,
+    serviceFee: order.serviceFee ?? 5.00,
+    items: Array.isArray(order.items) ? order.items : []
+  })) as SafeOrder[];
+
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -169,11 +190,11 @@ export default function ShopperDashboard() {
           </div>
         </div>
 
-        {user?.isAvailable && pendingOrders?.length ? (
+        {user?.isAvailable && safePendingOrders && safePendingOrders.length > 0 && (
           <>
             <h2 className="text-xl font-semibold mb-4">Available Orders</h2>
             <div className="grid gap-6 mb-8">
-              {pendingOrders.map((order) => (
+              {safePendingOrders.map((order) => (
                 <Card key={order.id}>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -185,14 +206,39 @@ export default function ShopperDashboard() {
                     <div className="space-y-4">
                       <div>
                         <h3 className="font-medium mb-2">Items:</h3>
-                        <ul className="list-disc list-inside text-muted-foreground">
-                          {order.items?.map((item, i) => (
-                            <li key={i}>
-                              {item.name} x {item.quantity}
-                              {item.price > 0 && ` - $${item.price.toFixed(2)}`}
-                            </li>
-                          ))}
-                        </ul>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Item</TableHead>
+                              <TableHead>Quantity</TableHead>
+                              <TableHead>Price</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {order.items.map((item, index) => (
+                              <TableRow key={index}>
+                                <TableCell>{item.name}</TableCell>
+                                <TableCell>{item.quantity}</TableCell>
+                                <TableCell>
+                                  ${item.price ? (item.price * item.quantity).toFixed(2) : "0.00"}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                        <div className="mt-4">
+                          <p className="text-right">
+                            Subtotal: ${order.total.toFixed(2)}
+                            <br />
+                            <span className="text-sm text-muted-foreground">
+                              + ${order.serviceFee.toFixed(2)} service fee
+                            </span>
+                            <br />
+                            <strong>
+                              Total: ${(order.total + order.serviceFee).toFixed(2)}
+                            </strong>
+                          </p>
+                        </div>
                       </div>
                       {order.notes && (
                         <div>
@@ -217,11 +263,11 @@ export default function ShopperDashboard() {
               ))}
             </div>
           </>
-        ) : null}
+        )}
 
         <h2 className="text-xl font-semibold mb-4">My Orders</h2>
         <div className="grid gap-6">
-          {myOrders?.map((order) => (
+          {safeMyOrders?.map((order) => (
             <Card key={order.id}>
               <CardHeader>
                 <div className="flex justify-between items-center">
@@ -254,7 +300,7 @@ export default function ShopperDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {Array.isArray(order.items) && order.items.map((item, index) => (
+                      {order.items.map((item, index) => (
                         <TableRow key={index}>
                           <TableCell>{item.name}</TableCell>
                           <TableCell>{item.quantity}</TableCell>
@@ -282,11 +328,11 @@ export default function ShopperDashboard() {
                           <TableCell>
                             <Checkbox
                               checked={item.purchased}
-                              onCheckedChange={(checked) => {
+                              onCheckedChange={(checked: boolean) => {
                                 const newItems = [...order.items];
                                 newItems[index] = {
                                   ...item,
-                                  purchased: checked as boolean,
+                                  purchased: checked,
                                 };
                                 updateItemsMutation.mutate({
                                   orderId: order.id,
