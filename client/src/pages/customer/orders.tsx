@@ -271,7 +271,7 @@ export default function CustomerOrders() {
                 <div className="flex justify-between items-center">
                   <CardTitle className="flex items-center gap-2">
                     {getStatusIcon(order.status)}
-                    Order #{order.displayOrderNumber || '?'}
+                    Order #{order.displayOrderNumber || order.id}
                   </CardTitle>
                   <span className="text-sm text-muted-foreground">
                     {order.createdAt &&
