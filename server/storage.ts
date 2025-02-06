@@ -1,8 +1,11 @@
-import { InsertUser, InsertOrder, InsertReview, User, Order, Review, OrderItem } from "@shared/schema";
+import { users, orders, reviews, type User, type Order, type Review, type InsertUser, type InsertOrder, type InsertReview, OrderItem } from "@shared/schema";
+import { db } from "./db";
+import { eq, and } from "drizzle-orm";
 import session from "express-session";
-import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { pool } from "./db";
 
-const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // User operations
@@ -34,174 +37,135 @@ export interface IStorage {
   sessionStore: session.Store;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private orders: Map<number, Order>;
-  private reviews: Map<number, Review>;
+export class DatabaseStorage implements IStorage {
   sessionStore: session.Store;
-  private currentUserId: number;
-  private currentOrderId: number;
-  private currentReviewId: number;
 
   constructor() {
-    this.users = new Map();
-    this.orders = new Map();
-    this.reviews = new Map();
-    this.currentUserId = 1;
-    this.currentOrderId = 1;
-    this.currentReviewId = 1;
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000 // 24h
+    this.sessionStore = new PostgresSessionStore({
+      pool,
+      createTableIfMissing: true,
     });
   }
 
+  // User operations
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username
-    );
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentUserId++;
-    const user: User = { ...insertUser, id, rating: 5.0, isAvailable: false };
-    this.users.set(id, user);
+    const [user] = await db.insert(users).values(insertUser).returning();
     return user;
   }
 
   async updateUserAvailability(id: number, isAvailable: boolean): Promise<User> {
-    const user = await this.getUser(id);
-    if (!user) throw new Error("User not found");
-
-    const updated = { ...user, isAvailable };
-    this.users.set(id, updated);
-    return updated;
+    const [user] = await db
+      .update(users)
+      .set({ isAvailable })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
   }
 
+  // Order operations
   async createOrder(order: InsertOrder & { customerId: number }): Promise<Order> {
-    const id = this.currentOrderId++;
-    const newOrder: Order = {
-      id,
-      customerId: order.customerId,
-      shopperId: null,
-      status: "pending",
-      total: 0,
-      serviceFee: 5.00,
-      isPaid: false,
-      createdAt: new Date(),
-      items: order.items.map(item => ({
-        ...item,
-        purchased: false,
-        price: 0,
-      })),
-      notes: order.notes ?? null,
-    };
-    this.orders.set(id, newOrder);
+    const [newOrder] = await db
+      .insert(orders)
+      .values({
+        customerId: order.customerId,
+        items: order.items,
+        notes: order.notes ?? null,
+      })
+      .returning();
     return newOrder;
   }
 
   async getOrder(id: number): Promise<Order | undefined> {
-    return this.orders.get(id);
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    return order;
   }
 
   async getOrdersByCustomer(customerId: number): Promise<Order[]> {
-    return Array.from(this.orders.values()).filter(
-      (order) => order.customerId === customerId
-    );
+    return db.select().from(orders).where(eq(orders.customerId, customerId));
   }
 
   async getOrdersByShopper(shopperId: number): Promise<Order[]> {
-    return Array.from(this.orders.values()).filter(
-      (order) => order.shopperId === shopperId
-    );
+    return db
+      .select()
+      .from(orders)
+      .where(and(eq(orders.shopperId, shopperId), eq(orders.status, "accepted")));
   }
 
   async getPendingOrders(): Promise<Order[]> {
-    return Array.from(this.orders.values()).filter(
-      (order) => order.status === "pending"
-    );
+    return db.select().from(orders).where(eq(orders.status, "pending"));
   }
 
   async updateOrderStatus(id: number, status: Order["status"]): Promise<Order> {
-    const order = await this.getOrder(id);
-    if (!order) throw new Error("Order not found");
-
-    const updated = { ...order, status };
-    this.orders.set(id, updated);
-    return updated;
+    const [order] = await db
+      .update(orders)
+      .set({ status })
+      .where(eq(orders.id, id))
+      .returning();
+    return order;
   }
 
   async assignShopper(orderId: number, shopperId: number): Promise<Order> {
-    const order = await this.getOrder(orderId);
-    if (!order) throw new Error("Order not found");
-
-    const updated = { ...order, shopperId, status: "accepted" as const };
-    this.orders.set(orderId, updated);
-    return updated;
+    const [order] = await db
+      .update(orders)
+      .set({ shopperId, status: "accepted" })
+      .where(eq(orders.id, orderId))
+      .returning();
+    return order;
   }
 
   async updateOrderItems(orderId: number, items: OrderItem[]): Promise<Order> {
-    const order = await this.getOrder(orderId);
-    if (!order) throw new Error("Order not found");
-
-    const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const updated = { ...order, items, total };
-    this.orders.set(orderId, updated);
-    return updated;
+    const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const [order] = await db
+      .update(orders)
+      .set({ items, total })
+      .where(eq(orders.id, orderId))
+      .returning();
+    return order;
   }
 
   async processPayment(orderId: number): Promise<Order> {
-    const order = await this.getOrder(orderId);
-    if (!order) throw new Error("Order not found");
-    if (order.isPaid) throw new Error("Order already paid");
-
-    const updated = { 
-      ...order, 
-      isPaid: true,
-      status: "paid" as const
-    };
-    this.orders.set(orderId, updated);
-    return updated;
+    const [order] = await db
+      .update(orders)
+      .set({ isPaid: true, status: "paid" })
+      .where(eq(orders.id, orderId))
+      .returning();
+    return order;
   }
 
+  // Review operations
   async createReview(review: InsertReview & {
     orderId: number;
     fromId: number;
     toId: number;
   }): Promise<Review> {
-    const id = this.currentReviewId++;
-    const newReview: Review = {
-      ...review,
-      id,
-      orderId: review.orderId,
-      fromId: review.fromId,
-      toId: review.toId,
-      comment: review.comment ?? null,
-    };
-    this.reviews.set(id, newReview);
+    const [newReview] = await db.insert(reviews).values(review).returning();
 
     // Update user rating
     const userReviews = await this.getReviewsByUser(review.toId);
     const totalRating = userReviews.reduce((sum, r) => sum + r.rating, 0);
     const avgRating = totalRating / userReviews.length;
 
-    const user = await this.getUser(review.toId);
-    if (user) {
-      const updated = { ...user, rating: avgRating };
-      this.users.set(user.id, updated);
-    }
+    await db
+      .update(users)
+      .set({ rating: avgRating })
+      .where(eq(users.id, review.toId));
 
     return newReview;
   }
 
   async getReviewsByUser(userId: number): Promise<Review[]> {
-    return Array.from(this.reviews.values()).filter(
-      (review) => review.toId === userId
-    );
+    return db.select().from(reviews).where(eq(reviews.toId, userId));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();
