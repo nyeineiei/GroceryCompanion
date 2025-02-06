@@ -113,10 +113,7 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .where(and(
         eq(orders.shopperId, shopperId),
-        not(or(
-          eq(orders.status, "completed"),
-          eq(orders.status, "paid")
-        ))
+        not(eq(orders.status, "paid"))  // Only exclude paid orders
       ))
       .orderBy(desc(orders.createdAt));
 
