@@ -1,6 +1,6 @@
 import { users, orders, reviews, type User, type Order, type Review, type InsertUser, type InsertOrder, type InsertReview, OrderItem } from "@shared/schema";
 import { db } from "./db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -91,7 +91,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOrdersByCustomer(customerId: number): Promise<Order[]> {
-    return db.select().from(orders).where(eq(orders.customerId, customerId));
+    return db
+      .select()
+      .from(orders)
+      .where(eq(orders.customerId, customerId))
+      .orderBy(desc(orders.createdAt));
   }
 
   async getOrdersByShopper(shopperId: number): Promise<Order[]> {
