@@ -74,7 +74,23 @@ export default function ShopperDashboard() {
 
   const acceptOrderMutation = useMutation({
     mutationFn: async (orderId: number) => {
-      const res = await apiRequest("POST", `/api/orders/${orderId}/accept`, {});
+      // Get current location
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error("Geolocation is not supported by your browser"));
+          return;
+        }
+        navigator.geolocation.getCurrentPosition(resolve, reject);
+      });
+
+      const location = {
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      };
+
+      const res = await apiRequest("POST", `/api/orders/${orderId}/accept`, {
+        location,
+      });
       return res.json();
     },
     onSuccess: () => {
@@ -83,6 +99,13 @@ export default function ShopperDashboard() {
       toast({
         title: "Order Accepted",
         description: "You can now start shopping for this order.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error Accepting Order",
+        description: error.message,
+        variant: "destructive",
       });
     },
   });
@@ -150,6 +173,14 @@ export default function ShopperDashboard() {
         return <Check className="h-5 w-5 text-green-500" />;
       default:
         return <ShoppingCart className="h-5 w-5 text-yellow-500" />;
+    }
+  };
+
+  const handleAcceptOrder = async (orderId: number) => {
+    try {
+      await acceptOrderMutation.mutate(orderId);
+    } catch (error) {
+      // Error is handled in onError above
     }
   };
 
@@ -274,7 +305,7 @@ export default function ShopperDashboard() {
                   </CardContent>
                   <CardFooter>
                     <Button
-                      onClick={() => acceptOrderMutation.mutate(order.id)}
+                      onClick={() => handleAcceptOrder(order.id)}
                       disabled={acceptOrderMutation.isPending}
                     >
                       {acceptOrderMutation.isPending && (

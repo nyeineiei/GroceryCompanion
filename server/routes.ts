@@ -120,10 +120,23 @@ export function registerRoutes(app: Express): Server {
     if (req.user.role !== "shopper") return res.sendStatus(403);
 
     try {
+      const { location } = req.body;
+
+      // Validate location data
+      if (!location || !location.latitude || !location.longitude) {
+        return res.status(400).json({ 
+          message: "Please enable location access. You must be at a grocery store to accept orders." 
+        });
+      }
+
+      // Simple validation - in real app we'd verify against actual store locations
+      // For now, we'll trust the shopper's input that they're at a store
       const order = await storage.assignShopper(
         parseInt(req.params.id),
-        req.user.id
+        req.user.id,
+        location
       );
+
       // Notify customer of accepted order
       notifyUser(order.customerId, {
         type: 'ORDER_UPDATED',

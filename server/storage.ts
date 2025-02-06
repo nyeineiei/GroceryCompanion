@@ -21,7 +21,7 @@ export interface IStorage {
   getOrdersByShopper(shopperId: number): Promise<Order[]>;
   getPendingOrders(): Promise<Order[]>;
   updateOrderStatus(id: number, status: Order["status"]): Promise<Order>;
-  assignShopper(orderId: number, shopperId: number): Promise<Order>;
+  assignShopper(orderId: number, shopperId: number, location: { latitude: number; longitude: number }): Promise<Order>;
   updateOrderItems(orderId: number, items: OrderItem[]): Promise<Order>;
   processPayment(orderId: number): Promise<Order>;
   updateOrder(id: number, updates: { items: OrderItem[], notes?: string }): Promise<Order>;
@@ -142,10 +142,19 @@ export class DatabaseStorage implements IStorage {
     return order;
   }
 
-  async assignShopper(orderId: number, shopperId: number): Promise<Order> {
+  async assignShopper(
+    orderId: number, 
+    shopperId: number,
+    location: { latitude: number; longitude: number }
+  ): Promise<Order> {
+    // Store the location where the shopper accepted the order
     const [order] = await db
       .update(orders)
-      .set({ shopperId, status: "accepted" })
+      .set({ 
+        shopperId, 
+        status: "accepted",
+        shopperLocation: location, // This will be stored in the JSON column
+      })
       .where(eq(orders.id, orderId))
       .returning();
     return order;
