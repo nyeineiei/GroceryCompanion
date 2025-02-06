@@ -56,6 +56,8 @@ export function registerRoutes(app: Express): Server {
   // Order routes
   app.post("/api/orders", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (req.user.role !== "customer") return res.sendStatus(403);
+
     const order = await storage.createOrder({
       ...req.body,
       customerId: req.user.id,
@@ -65,24 +67,33 @@ export function registerRoutes(app: Express): Server {
 
   app.get("/api/orders/customer", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (req.user.role !== "customer") return res.sendStatus(403);
+
     const orders = await storage.getOrdersByCustomer(req.user.id);
     res.json(orders);
   });
 
   app.get("/api/orders/shopper", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (req.user.role !== "shopper") return res.sendStatus(403);
+
     const orders = await storage.getOrdersByShopper(req.user.id);
     res.json(orders);
   });
 
   app.get("/api/orders/pending", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (req.user.role !== "shopper") return res.sendStatus(403);
+    if (!req.user.isAvailable) return res.sendStatus(403);
+
     const orders = await storage.getPendingOrders();
     res.json(orders);
   });
 
   app.post("/api/orders/:id/accept", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (req.user.role !== "shopper") return res.sendStatus(403);
+
     try {
       const order = await storage.assignShopper(
         parseInt(req.params.id),
@@ -102,17 +113,25 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/orders/:id/status", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (req.user.role !== "shopper") return res.sendStatus(403);
+
     try {
-      const order = await storage.updateOrderStatus(
-        parseInt(req.params.id),
+      const orderId = parseInt(req.params.id);
+      const order = await storage.getOrder(orderId);
+      if (!order || order.shopperId !== req.user.id) {
+        return res.sendStatus(403);
+      }
+
+      const updatedOrder = await storage.updateOrderStatus(
+        orderId,
         req.body.status
       );
       // Notify customer of status change
-      notifyUser(order.customerId, {
+      notifyUser(updatedOrder.customerId, {
         type: 'ORDER_UPDATED',
-        order
+        order: updatedOrder
       });
-      res.json(order);
+      res.json(updatedOrder);
     } catch (error) {
       console.error('Error updating order status:', error);
       res.status(500).json({ message: 'Failed to update order status' });
@@ -121,17 +140,23 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/orders/:id/items", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (req.user.role !== "shopper") return res.sendStatus(403);
+
     try {
       const orderId = parseInt(req.params.id);
-      const items = req.body.items as OrderItem[];
+      const order = await storage.getOrder(orderId);
+      if (!order || order.shopperId !== req.user.id) {
+        return res.sendStatus(403);
+      }
 
-      const order = await storage.updateOrderItems(orderId, items);
+      const items = req.body.items as OrderItem[];
+      const updatedOrder = await storage.updateOrderItems(orderId, items);
       // Notify customer of items update
-      notifyUser(order.customerId, {
+      notifyUser(updatedOrder.customerId, {
         type: 'ORDER_UPDATED',
-        order
+        order: updatedOrder
       });
-      res.json(order);
+      res.json(updatedOrder);
     } catch (error) {
       console.error('Error updating order items:', error);
       res.status(500).json({ message: 'Failed to update order items' });
@@ -140,11 +165,17 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/orders/:id/pay", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const orderId = parseInt(req.params.id);
+    if (req.user.role !== "customer") return res.sendStatus(403);
 
     try {
-      const order = await storage.processPayment(orderId);
-      res.json(order);
+      const orderId = parseInt(req.params.id);
+      const order = await storage.getOrder(orderId);
+      if (!order || order.customerId !== req.user.id) {
+        return res.sendStatus(403);
+      }
+
+      const updatedOrder = await storage.processPayment(orderId);
+      res.json(updatedOrder);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
     }
@@ -166,6 +197,8 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/shoppers/availability", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (req.user.role !== "shopper") return res.sendStatus(403);
+
     const user = await storage.updateUserAvailability(
       req.user.id,
       req.body.isAvailable
