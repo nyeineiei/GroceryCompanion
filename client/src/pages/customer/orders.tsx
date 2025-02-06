@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 type OrderItem = {
   name: string;
@@ -50,6 +51,8 @@ export default function CustomerOrders() {
   const [newOrderOpen, setNewOrderOpen] = useState(false);
   const [items, setItems] = useState("");
   const [notes, setNotes] = useState("");
+
+  useWebSocket();
 
   const { data: orders, isLoading } = useQuery<Order[]>({
     queryKey: ["/api/orders/customer"],
@@ -167,16 +170,16 @@ export default function CustomerOrders() {
     );
   }
 
-  const safeOrders = orders?.map(order => ({
+  const safeOrders = orders?.map((order) => ({
     ...order,
     total: order.total ?? 0,
     serviceFee: order.serviceFee ?? 5.00,
-    items: Array.isArray(order.items) ? order.items.map(item => ({
-      name: item.name ?? '',
+    items: Array.isArray(order.items) ? order.items.map((item) => ({
+      name: item.name ?? "",
       quantity: item.quantity ?? 1,
       price: item.price ?? 0,
-      purchased: item.purchased ?? false
-    })) : []
+      purchased: item.purchased ?? false,
+    })) : [],
   })) as SafeOrder[];
 
   return (
@@ -199,7 +202,8 @@ export default function CustomerOrders() {
                     Order #{order.id}
                   </CardTitle>
                   <span className="text-sm text-muted-foreground">
-                    {order.createdAt && format(new Date(order.createdAt), "MMM d, yyyy h:mm a")}
+                    {order.createdAt &&
+                      format(new Date(order.createdAt), "MMM d, yyyy h:mm a")}
                   </span>
                 </div>
               </CardHeader>
