@@ -245,6 +245,36 @@ export function registerRoutes(app: Express): Server {
       res.status(500).json({ message: 'Failed to update availability' });
     }
   });
+  // Add this new route after the existing order routes
+  app.patch("/api/orders/:id", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (req.user.role !== "customer") return res.sendStatus(403);
+
+    try {
+      const orderId = parseInt(req.params.id);
+      const order = await storage.getOrder(orderId);
+
+      // Check if order exists and belongs to the customer
+      if (!order || order.customerId !== req.user.id) {
+        return res.sendStatus(403);
+      }
+
+      // Don't allow editing if order is already accepted
+      if (order.status !== "pending") {
+        return res.status(400).json({ message: "Cannot edit order after it has been accepted" });
+      }
+
+      const updatedOrder = await storage.updateOrder(orderId, {
+        items: req.body.items,
+        notes: req.body.notes
+      });
+
+      res.json(updatedOrder);
+    } catch (error) {
+      console.error('Error updating order:', error);
+      res.status(500).json({ message: 'Failed to update order' });
+    }
+  });
 
   return httpServer;
 }

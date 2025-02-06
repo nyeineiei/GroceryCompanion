@@ -24,6 +24,7 @@ export interface IStorage {
   assignShopper(orderId: number, shopperId: number): Promise<Order>;
   updateOrderItems(orderId: number, items: OrderItem[]): Promise<Order>;
   processPayment(orderId: number): Promise<Order>;
+  updateOrder(id: number, updates: { items: OrderItem[], notes?: string }): Promise<Order>;
 
   // Review operations
   createReview(review: InsertReview & { 
@@ -165,6 +166,27 @@ export class DatabaseStorage implements IStorage {
       .update(orders)
       .set({ isPaid: true, status: "paid" })
       .where(eq(orders.id, orderId))
+      .returning();
+    return order;
+  }
+
+  async updateOrder(
+    id: number,
+    updates: { items: OrderItem[], notes?: string }
+  ): Promise<Order> {
+    const total = updates.items.reduce(
+      (sum, item) => sum + item.price * item.quantity,
+      0
+    );
+
+    const [order] = await db
+      .update(orders)
+      .set({
+        items: updates.items,
+        notes: updates.notes ?? null,
+        total
+      })
+      .where(eq(orders.id, id))
       .returning();
     return order;
   }

@@ -52,6 +52,7 @@ export default function CustomerOrders() {
   const [newOrderOpen, setNewOrderOpen] = useState(false);
   const [items, setItems] = useState("");
   const [notes, setNotes] = useState("");
+  const [editOrderId, setEditOrderId] = useState<number | null>(null);
 
   useWebSocket();
 
@@ -124,6 +125,29 @@ export default function CustomerOrders() {
     },
   });
 
+  const editOrderMutation = useMutation({
+    mutationFn: async ({
+      orderId,
+      order,
+    }: {
+      orderId: number;
+      order: InsertOrder;
+    }) => {
+      const res = await apiRequest("PATCH", `/api/orders/${orderId}`, order);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/customer", user?.id] });
+      setEditOrderId(null);
+      setItems("");
+      setNotes("");
+      toast({
+        title: "Order Updated",
+        description: "Your order has been updated successfully.",
+      });
+    },
+  });
+
   const handleNewOrder = () => {
     if (!items.trim()) {
       toast({
@@ -151,6 +175,40 @@ export default function CustomerOrders() {
       items: parsedItems,
       notes,
     });
+  };
+
+  const handleEditOrder = () => {
+    if (!items.trim()) {
+      toast({
+        title: "Error",
+        description: "Please add at least one item to your order",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const parsedItems = items
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [name, quantity = "1"] = line.split("x").map((s) => s.trim());
+        return {
+          name,
+          quantity: parseInt(quantity) || 1,
+          price: 0,
+          purchased: false,
+        };
+      });
+
+    if (editOrderId) {
+      editOrderMutation.mutate({
+        orderId: editOrderId,
+        order: {
+          items: parsedItems,
+          notes,
+        },
+      });
+    }
   };
 
   const getStatusIcon = (status: Order["status"]) => {
@@ -271,6 +329,18 @@ export default function CustomerOrders() {
                 )}
               </CardContent>
               <CardFooter className="flex justify-between">
+                {order.status === "pending" && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setEditOrderId(order.id);
+                      setItems(order.items.map(item => `${item.name} x ${item.quantity}`).join("\n"));
+                      setNotes(order.notes || "");
+                    }}
+                  >
+                    Edit Order
+                  </Button>
+                )}
                 {order.status === "completed" && !order.isPaid && (
                   <Button
                     onClick={() => payOrderMutation.mutate(order.id)}
@@ -352,6 +422,46 @@ export default function CustomerOrders() {
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 )}
                 Place Order
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+        <Dialog open={!!editOrderId} onOpenChange={(open) => !open && setEditOrderId(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit Order</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Shopping List (Format: Item name x quantity)
+                </label>
+                <Textarea
+                  placeholder="Enter items (one per line, e.g. 'Milk x 2')"
+                  value={items}
+                  onChange={(e) => setItems(e.target.value)}
+                  rows={6}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-2 block">
+                  Special Instructions
+                </label>
+                <Textarea
+                  placeholder="Any preferences or instructions for the shopper"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </div>
+              <Button
+                className="w-full"
+                onClick={handleEditOrder}
+                disabled={editOrderMutation.isPending}
+              >
+                {editOrderMutation.isPending && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                Update Order
               </Button>
             </div>
           </DialogContent>
