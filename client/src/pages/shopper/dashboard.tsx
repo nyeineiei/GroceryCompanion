@@ -22,6 +22,24 @@ import {
   Star,
 } from "lucide-react";
 import { format } from "date-fns";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+
+interface OrderItem {
+  name: string;
+  quantity: number;
+  price: number;
+  purchased: boolean;
+}
+
 
 export default function ShopperDashboard() {
   const { user } = useAuth();
@@ -79,6 +97,28 @@ export default function ShopperDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders/shopper"] });
+    },
+  });
+
+  const updateItemsMutation = useMutation({
+    mutationFn: async ({
+      orderId,
+      items,
+    }: {
+      orderId: number;
+      items: OrderItem[];
+    }) => {
+      const res = await apiRequest("POST", `/api/orders/${orderId}/items`, {
+        items,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/shopper"] });
+      toast({
+        title: "Items Updated",
+        description: "Order items have been updated successfully.",
+      });
     },
   });
 
@@ -193,28 +233,86 @@ export default function ShopperDashboard() {
                     Order #{order.id}
                   </CardTitle>
                   <span className="text-sm text-muted-foreground">
-                    {order.createdAt && 
+                    {order.createdAt &&
                       format(new Date(order.createdAt), "MMM d, yyyy h:mm a")}
                   </span>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-medium mb-2">Items:</h3>
-                    <ul className="list-disc list-inside text-muted-foreground">
-                      {order.items?.map((item, i) => (
-                        <li key={i}>{item}</li>
+                <div>
+                  <h3 className="font-medium mb-2">Items:</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Purchased</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {order.items?.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{item.name}</TableCell>
+                          <TableCell>{item.quantity}</TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={item.price}
+                              onChange={(e) => {
+                                const newItems = [...order.items];
+                                newItems[index] = {
+                                  ...item,
+                                  price: parseFloat(e.target.value) || 0,
+                                };
+                                updateItemsMutation.mutate({
+                                  orderId: order.id,
+                                  items: newItems,
+                                });
+                              }}
+                              className="w-24"
+                              disabled={order.status === "completed"}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Checkbox
+                              checked={item.purchased}
+                              onCheckedChange={(checked) => {
+                                const newItems = [...order.items];
+                                newItems[index] = {
+                                  ...item,
+                                  purchased: checked,
+                                };
+                                updateItemsMutation.mutate({
+                                  orderId: order.id,
+                                  items: newItems,
+                                });
+                              }}
+                              disabled={order.status === "completed"}
+                            />
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </ul>
+                    </TableBody>
+                  </Table>
+                  <div className="mt-4">
+                    <p className="text-right">
+                      Total: ${order.total.toFixed(2)}
+                      <br />
+                      <span className="text-sm text-muted-foreground">
+                        + ${order.serviceFee.toFixed(2)} service fee
+                      </span>
+                    </p>
                   </div>
-                  {order.notes && (
-                    <div>
-                      <h3 className="font-medium mb-2">Notes:</h3>
-                      <p className="text-muted-foreground">{order.notes}</p>
-                    </div>
-                  )}
                 </div>
+                {order.notes && (
+                  <div>
+                    <h3 className="font-medium mb-2">Notes:</h3>
+                    <p className="text-muted-foreground">{order.notes}</p>
+                  </div>
+                )}
               </CardContent>
               <CardFooter className="flex justify-between">
                 {order.status !== "completed" && (

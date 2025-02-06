@@ -22,6 +22,14 @@ import { InsertOrder, Order } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, ShoppingCart, Truck, Check, Star } from "lucide-react";
 import { format } from "date-fns";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function CustomerOrders() {
   const { user } = useAuth();
@@ -78,6 +86,20 @@ export default function CustomerOrders() {
     },
   });
 
+  const payOrderMutation = useMutation({
+    mutationFn: async (orderId: number) => {
+      const res = await apiRequest("POST", `/api/orders/${orderId}/pay`);
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/customer"] });
+      toast({
+        title: "Payment Successful",
+        description: "Your order has been paid successfully.",
+      });
+    },
+  });
+
   const handleNewOrder = () => {
     if (!items.trim()) {
       toast({
@@ -88,8 +110,21 @@ export default function CustomerOrders() {
       return;
     }
 
+    const parsedItems = items
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => {
+        const [name, quantity = "1"] = line.split("x").map((s) => s.trim());
+        return {
+          name,
+          quantity: parseInt(quantity) || 1,
+          price: 0,
+          purchased: false,
+        };
+      });
+
     createOrderMutation.mutate({
-      items: items.split("\n").filter(Boolean),
+      items: parsedItems,
       notes,
     });
   };
@@ -143,24 +178,72 @@ export default function CustomerOrders() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-medium mb-2">Items:</h3>
-                    <ul className="list-disc list-inside text-muted-foreground">
-                      {order.items?.map((item, i) => (
-                        <li key={i}>{item}</li>
+                <div>
+                  <h3 className="font-medium mb-2">Items:</h3>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Item</TableHead>
+                        <TableHead>Quantity</TableHead>
+                        <TableHead>Price</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {order.items?.map((item, index) => (
+                        <TableRow key={index}>
+                          <TableCell>{item.name}</TableCell>
+                          <TableCell>{item.quantity}</TableCell>
+                          <TableCell>
+                            ${item.price ? (item.price * item.quantity).toFixed(2) : "0.00"}
+                          </TableCell>
+                          <TableCell>
+                            {item.purchased ? (
+                              <Check className="h-4 w-4 text-green-500" />
+                            ) : (
+                              <span className="text-muted-foreground">Pending</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
                       ))}
-                    </ul>
+                    </TableBody>
+                  </Table>
+                  <div className="mt-4">
+                    <p className="text-right">
+                      Subtotal: ${order.total.toFixed(2)}
+                      <br />
+                      <span className="text-sm text-muted-foreground">
+                        + ${order.serviceFee.toFixed(2)} service fee
+                      </span>
+                      <br />
+                      <strong>
+                        Total: ${(order.total + order.serviceFee).toFixed(2)}
+                      </strong>
+                    </p>
                   </div>
-                  {order.notes && (
-                    <div>
-                      <h3 className="font-medium mb-2">Notes:</h3>
-                      <p className="text-muted-foreground">{order.notes}</p>
-                    </div>
-                  )}
                 </div>
+                {order.notes && (
+                  <div>
+                    <h3 className="font-medium mb-2">Notes:</h3>
+                    <p className="text-muted-foreground">{order.notes}</p>
+                  </div>
+                )}
               </CardContent>
-              <CardFooter>
+              <CardFooter className="flex justify-between">
+                {order.status === "completed" && !order.isPaid && (
+                  <Button
+                    onClick={() => payOrderMutation.mutate(order.id)}
+                    disabled={payOrderMutation.isPending}
+                  >
+                    {payOrderMutation.isPending && (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    )}
+                    Pay Now
+                  </Button>
+                )}
+                {order.status === "completed" && order.isPaid && (
+                  <span className="text-green-500 font-medium">Paid</span>
+                )}
                 {order.status === "completed" && order.shopperId && (
                   <div className="flex gap-2">
                     {[1, 2, 3, 4, 5].map((rating) => (
@@ -200,10 +283,10 @@ export default function CustomerOrders() {
             <div className="space-y-4">
               <div>
                 <label className="text-sm font-medium mb-2 block">
-                  Shopping List
+                  Shopping List (Format: Item name x quantity)
                 </label>
                 <Textarea
-                  placeholder="Enter items (one per line)"
+                  placeholder="Enter items (one per line, e.g. 'Milk x 2')"
                   value={items}
                   onChange={(e) => setItems(e.target.value)}
                   rows={6}

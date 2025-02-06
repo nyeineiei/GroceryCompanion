@@ -1,4 +1,4 @@
-import { InsertUser, InsertOrder, InsertReview, User, Order, Review } from "@shared/schema";
+import { InsertUser, InsertOrder, InsertReview, User, Order, Review, OrderItem } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
 
@@ -10,7 +10,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUserAvailability(id: number, isAvailable: boolean): Promise<User>;
-  
+
   // Order operations
   createOrder(order: InsertOrder & { customerId: number }): Promise<Order>;
   getOrder(id: number): Promise<Order | undefined>;
@@ -19,7 +19,9 @@ export interface IStorage {
   getPendingOrders(): Promise<Order[]>;
   updateOrderStatus(id: number, status: Order["status"]): Promise<Order>;
   assignShopper(orderId: number, shopperId: number): Promise<Order>;
-  
+  updateOrderItems(orderId: number, items: OrderItem[]): Promise<Order>;
+  processPayment(orderId: number): Promise<Order>;
+
   // Review operations
   createReview(review: InsertReview & { 
     orderId: number;
@@ -27,7 +29,7 @@ export interface IStorage {
     toId: number;
   }): Promise<Review>;
   getReviewsByUser(userId: number): Promise<Review[]>;
-  
+
   // Session store
   sessionStore: session.Store;
 }
@@ -73,7 +75,7 @@ export class MemStorage implements IStorage {
   async updateUserAvailability(id: number, isAvailable: boolean): Promise<User> {
     const user = await this.getUser(id);
     if (!user) throw new Error("User not found");
-    
+
     const updated = { ...user, isAvailable };
     this.users.set(id, updated);
     return updated;
@@ -87,8 +89,14 @@ export class MemStorage implements IStorage {
       status: "pending",
       shopperId: null,
       total: 0,
+      serviceFee: 5.00,
+      isPaid: false,
       createdAt: new Date(),
-      items: order.items ?? [],
+      items: order.items.map(item => ({
+        ...item,
+        purchased: false,
+        price: 0, // Price will be set by shopper
+      })),
       notes: order.notes ?? null,
     };
     this.orders.set(id, newOrder);
@@ -120,7 +128,7 @@ export class MemStorage implements IStorage {
   async updateOrderStatus(id: number, status: Order["status"]): Promise<Order> {
     const order = await this.getOrder(id);
     if (!order) throw new Error("Order not found");
-    
+
     const updated = { ...order, status };
     this.orders.set(id, updated);
     return updated;
@@ -131,6 +139,31 @@ export class MemStorage implements IStorage {
     if (!order) throw new Error("Order not found");
 
     const updated: Order = { ...order, shopperId, status: "accepted" as const };
+    this.orders.set(orderId, updated);
+    return updated;
+  }
+
+  async updateOrderItems(orderId: number, items: OrderItem[]): Promise<Order> {
+    const order = await this.getOrder(orderId);
+    if (!order) throw new Error("Order not found");
+
+    const total = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const updated = { ...order, items, total };
+    this.orders.set(orderId, updated);
+    return updated;
+  }
+
+  async processPayment(orderId: number): Promise<Order> {
+    const order = await this.getOrder(orderId);
+    if (!order) throw new Error("Order not found");
+    if (order.isPaid) throw new Error("Order already paid");
+
+    // Mock payment processing - in real app, this would integrate with Stripe
+    const updated = { 
+      ...order, 
+      isPaid: true,
+      status: "paid",
+    };
     this.orders.set(orderId, updated);
     return updated;
   }
