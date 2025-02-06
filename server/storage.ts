@@ -1,6 +1,6 @@
 import { users, orders, reviews, type User, type Order, type Review, type InsertUser, type InsertOrder, type InsertReview, OrderItem } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, or } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -25,6 +25,8 @@ export interface IStorage {
   updateOrderItems(orderId: number, items: OrderItem[]): Promise<Order>;
   processPayment(orderId: number): Promise<Order>;
   updateOrder(id: number, updates: { items: OrderItem[], notes?: string }): Promise<Order>;
+  getCompletedOrdersByCustomer(customerId: number): Promise<Order[]>;
+  getCompletedOrdersByShopper(shopperId: number): Promise<Order[]>;
 
   // Review operations
   createReview(review: InsertReview & { 
@@ -213,6 +215,44 @@ export class DatabaseStorage implements IStorage {
       .where(eq(orders.id, id))
       .returning();
     return order;
+  }
+
+  async getCompletedOrdersByCustomer(customerId: number): Promise<Order[]> {
+    const completedOrders = await db
+      .select()
+      .from(orders)
+      .where(and(
+        eq(orders.customerId, customerId),
+        or(
+          eq(orders.status, "completed"),
+          eq(orders.status, "paid")
+        )
+      ))
+      .orderBy(desc(orders.createdAt));
+
+    return completedOrders.map((order, index) => ({
+      ...order,
+      displayOrderNumber: completedOrders.length - index
+    }));
+  }
+
+  async getCompletedOrdersByShopper(shopperId: number): Promise<Order[]> {
+    const completedOrders = await db
+      .select()
+      .from(orders)
+      .where(and(
+        eq(orders.shopperId, shopperId),
+        or(
+          eq(orders.status, "completed"),
+          eq(orders.status, "paid")
+        )
+      ))
+      .orderBy(desc(orders.createdAt));
+
+    return completedOrders.map((order, index) => ({
+      ...order,
+      displayOrderNumber: completedOrders.length - index
+    }));
   }
 
   // Review operations

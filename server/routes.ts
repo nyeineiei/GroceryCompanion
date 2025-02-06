@@ -291,5 +291,31 @@ export function registerRoutes(app: Express): Server {
     }
   });
 
+  app.get("/api/orders/customer/history", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (req.user.role !== "customer") return res.sendStatus(403);
+
+    try {
+      const orders = await storage.getCompletedOrdersByCustomer(req.user.id);
+      res.json(orders);
+    } catch (error) {
+      console.error('Error fetching customer order history:', error);
+      res.status(500).json({ message: 'Failed to fetch order history' });
+    }
+  });
+
+  app.get("/api/orders/shopper/history", async (req, res) => {
+    if (!req.isAuthenticated()) return res.sendStatus(401);
+    if (req.user.role !== "shopper") return res.sendStatus(403);
+
+    try {
+      const orders = await storage.getCompletedOrdersByShopper(req.user.id);
+      res.json(orders);
+    } catch (error) {
+      console.error('Error fetching shopper order history:', error);
+      res.status(500).json({ message: 'Failed to fetch order history' });
+    }
+  });
+
   return httpServer;
 }

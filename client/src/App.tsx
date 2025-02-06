@@ -7,7 +7,9 @@ import NotFound from "@/pages/not-found";
 import AuthPage from "@/pages/auth-page";
 import HomePage from "@/pages/home-page";
 import CustomerOrders from "@/pages/customer/orders";
+import CustomerHistory from "@/pages/customer/history";
 import ShopperDashboard from "@/pages/shopper/dashboard";
+import ShopperHistory from "@/pages/shopper/history";
 import { ProtectedRoute } from "./lib/protected-route";
 
 function Router() {
@@ -17,6 +19,8 @@ function Router() {
       <Route path="/" component={HomePage} />
       <ProtectedRoute path="/orders" component={CustomerOrders} />
       <ProtectedRoute path="/dashboard" component={ShopperDashboard} />
+      <ProtectedRoute path="/customer/history" component={CustomerHistory} />
+      <ProtectedRoute path="/shopper/history" component={ShopperHistory} />
       <Route component={NotFound} />
     </Switch>
   );

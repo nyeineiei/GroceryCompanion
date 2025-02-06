@@ -6,9 +6,10 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ShoppingBag, LogOut } from "lucide-react";
+import { ShoppingBag, LogOut, History } from "lucide-react";
 
 export default function Navbar() {
   const { user, logoutMutation } = useAuth();
@@ -29,6 +30,12 @@ export default function Navbar() {
               <Link href={user.role === "customer" ? "/orders" : "/dashboard"}>
                 <a className="text-sm font-medium">
                   {user.role === "customer" ? "My Orders" : "Dashboard"}
+                </a>
+              </Link>
+              <Link href={user.role === "customer" ? "/customer/history" : "/shopper/history"}>
+                <a className="text-sm font-medium flex items-center gap-1">
+                  <History className="h-4 w-4" />
+                  History
                 </a>
               </Link>
 
