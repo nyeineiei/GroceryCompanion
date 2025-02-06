@@ -187,7 +187,10 @@ export default function ShopperDashboard() {
                         <h3 className="font-medium mb-2">Items:</h3>
                         <ul className="list-disc list-inside text-muted-foreground">
                           {order.items?.map((item, i) => (
-                            <li key={i}>{item}</li>
+                            <li key={i}>
+                              {item.name} x {item.quantity}
+                              {item.price > 0 && ` - $${item.price.toFixed(2)}`}
+                            </li>
                           ))}
                         </ul>
                       </div>
