@@ -11,9 +11,6 @@ const clients = new Map<number, WebSocket>();
 export function registerRoutes(app: Express): Server {
   const httpServer = createServer(app);
 
-  // Setup auth first to ensure session is available
-  setupAuth(app);
-
   // Setup WebSocket server
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
@@ -53,32 +50,47 @@ export function registerRoutes(app: Express): Server {
     }
   };
 
-  // Order routes
+  // Order routes with proper role checks
   app.post("/api/orders", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (req.user.role !== "customer") return res.sendStatus(403);
 
-    const order = await storage.createOrder({
-      ...req.body,
-      customerId: req.user.id,
-    });
-    res.json(order);
+    try {
+      const order = await storage.createOrder({
+        ...req.body,
+        customerId: req.user.id,
+      });
+      res.json(order);
+    } catch (error) {
+      console.error('Error creating order:', error);
+      res.status(500).json({ message: 'Failed to create order' });
+    }
   });
 
   app.get("/api/orders/customer", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (req.user.role !== "customer") return res.sendStatus(403);
 
-    const orders = await storage.getOrdersByCustomer(req.user.id);
-    res.json(orders);
+    try {
+      const orders = await storage.getOrdersByCustomer(req.user.id);
+      res.json(orders);
+    } catch (error) {
+      console.error('Error fetching customer orders:', error);
+      res.status(500).json({ message: 'Failed to fetch orders' });
+    }
   });
 
   app.get("/api/orders/shopper", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (req.user.role !== "shopper") return res.sendStatus(403);
 
-    const orders = await storage.getOrdersByShopper(req.user.id);
-    res.json(orders);
+    try {
+      const orders = await storage.getOrdersByShopper(req.user.id);
+      res.json(orders);
+    } catch (error) {
+      console.error('Error fetching shopper orders:', error);
+      res.status(500).json({ message: 'Failed to fetch orders' });
+    }
   });
 
   app.get("/api/orders/pending", async (req, res) => {
@@ -86,8 +98,13 @@ export function registerRoutes(app: Express): Server {
     if (req.user.role !== "shopper") return res.sendStatus(403);
     if (!req.user.isAvailable) return res.sendStatus(403);
 
-    const orders = await storage.getPendingOrders();
-    res.json(orders);
+    try {
+      const orders = await storage.getPendingOrders();
+      res.json(orders);
+    } catch (error) {
+      console.error('Error fetching pending orders:', error);
+      res.status(500).json({ message: 'Failed to fetch pending orders' });
+    }
   });
 
   app.post("/api/orders/:id/accept", async (req, res) => {
@@ -183,27 +200,42 @@ export function registerRoutes(app: Express): Server {
 
   app.post("/api/reviews", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
-    const review = await storage.createReview({
-      ...req.body,
-      fromId: req.user.id,
-    });
-    res.json(review);
+    try {
+      const review = await storage.createReview({
+        ...req.body,
+        fromId: req.user.id,
+      });
+      res.json(review);
+    } catch (error) {
+      console.error('Error creating review:', error);
+      res.status(500).json({ message: 'Failed to create review' });
+    }
   });
 
   app.get("/api/reviews/:userId", async (req, res) => {
-    const reviews = await storage.getReviewsByUser(parseInt(req.params.userId));
-    res.json(reviews);
+    try {
+      const reviews = await storage.getReviewsByUser(parseInt(req.params.userId));
+      res.json(reviews);
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+      res.status(500).json({ message: 'Failed to fetch reviews' });
+    }
   });
 
   app.post("/api/shoppers/availability", async (req, res) => {
     if (!req.isAuthenticated()) return res.sendStatus(401);
     if (req.user.role !== "shopper") return res.sendStatus(403);
 
-    const user = await storage.updateUserAvailability(
-      req.user.id,
-      req.body.isAvailable
-    );
-    res.json(user);
+    try {
+      const user = await storage.updateUserAvailability(
+        req.user.id,
+        req.body.isAvailable
+      );
+      res.json(user);
+    } catch (error) {
+      console.error('Error updating shopper availability:', error);
+      res.status(500).json({ message: 'Failed to update availability' });
+    }
   });
 
   return httpServer;

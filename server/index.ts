@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db, pool } from "./db";
+import { setupAuth } from "./auth";
 
 const app = express();
 app.use(express.json());
@@ -41,7 +42,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Global error handler for database connection issues
+// Global error handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   console.error('Error:', err);
   const status = err.status || err.statusCode || 500;
@@ -51,10 +52,14 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 
 (async () => {
   try {
-    // Test database connection
+    // Test database connection first
     await pool.connect();
     console.log('Database connection successful');
 
+    // Setup auth with session store before routes
+    setupAuth(app);
+
+    // Register API routes
     const server = registerRoutes(app);
 
     // Setup Vite for development or serve static files for production
@@ -72,7 +77,6 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     });
   } catch (error) {
     console.error('Failed to start server:', error);
-    // Close database pool on startup error
     await pool.end();
     process.exit(1);
   }
