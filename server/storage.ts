@@ -97,7 +97,10 @@ export class DatabaseStorage implements IStorage {
     const customerOrders = await db
       .select()
       .from(orders)
-      .where(eq(orders.customerId, customerId))
+      .where(and(
+        eq(orders.customerId, customerId),
+        not(eq(orders.status, "paid")) // Exclude paid orders from dashboard
+      ))
       .orderBy(desc(orders.createdAt));
 
     // Add user-specific order numbers
