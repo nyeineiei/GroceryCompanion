@@ -46,7 +46,7 @@ app.use((req, res, next) => {
 
     // Error handling middleware
     app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      console.error('Error:', err.stack); // Enhanced error logging
+      console.error('Error:', err.stack);
       const status = err.status || err.statusCode || 500;
       const message = err.message || "Internal Server Error";
       res.status(status).json({ message });
@@ -61,8 +61,8 @@ app.use((req, res, next) => {
       log('Static file serving setup complete');
     }
 
-    const PORT = process.env.PORT || 5000;
-    server.listen(PORT, "0.0.0.0", () => {
+    const PORT = Number(process.env.PORT || 5000);
+    server.listen(PORT, () => {
       log(`Server running at http://0.0.0.0:${PORT}`);
     });
   } catch (error) {
