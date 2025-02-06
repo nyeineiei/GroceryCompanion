@@ -11,6 +11,8 @@ const orderStages = [
   { status: "paid", label: "Paid", icon: Check },
 ] as const;
 
+type OrderStage = typeof orderStages[number]["status"];
+
 export function OrderProgress({ status }: { status: Order["status"] }) {
   const currentStageIndex = orderStages.findIndex((stage) => stage.status === status);
   const progress = ((currentStageIndex + 1) / orderStages.length) * 100;
@@ -23,7 +25,7 @@ export function OrderProgress({ status }: { status: Order["status"] }) {
           const Icon = stage.icon;
           const isActive = index <= currentStageIndex;
           const isCurrentStage = index === currentStageIndex;
-          
+
           return (
             <div
               key={stage.status}

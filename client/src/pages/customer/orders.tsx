@@ -295,7 +295,7 @@ export default function CustomerOrders() {
                       >
                         <Star
                           className={`h-5 w-5 ${
-                            rating <= (order.rating ?? 0)
+                            reviewMutation.data && rating <= reviewMutation.data.rating
                               ? "fill-yellow-400 text-yellow-400"
                               : "text-muted-foreground"
                           }`}
