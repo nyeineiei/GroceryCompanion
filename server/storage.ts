@@ -1,6 +1,6 @@
 import { users, orders, reviews, type User, type Order, type Review, type InsertUser, type InsertOrder, type InsertReview, OrderItem } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, desc, or } from "drizzle-orm";
+import { eq, and, desc, or, not } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
 import { pool } from "./db";
@@ -111,7 +111,13 @@ export class DatabaseStorage implements IStorage {
     const shopperOrders = await db
       .select()
       .from(orders)
-      .where(eq(orders.shopperId, shopperId))
+      .where(and(
+        eq(orders.shopperId, shopperId),
+        not(or(
+          eq(orders.status, "completed"),
+          eq(orders.status, "paid")
+        ))
+      ))
       .orderBy(desc(orders.createdAt));
 
     // Add sequential numbers for shopper's orders
