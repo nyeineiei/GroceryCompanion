@@ -251,7 +251,7 @@ export default function ShopperDashboard() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {order.items?.map((item, index) => (
+                      {Array.isArray(order.items) && order.items.map((item, index) => (
                         <TableRow key={index}>
                           <TableCell>{item.name}</TableCell>
                           <TableCell>{item.quantity}</TableCell>
@@ -283,7 +283,7 @@ export default function ShopperDashboard() {
                                 const newItems = [...order.items];
                                 newItems[index] = {
                                   ...item,
-                                  purchased: checked,
+                                  purchased: checked as boolean,
                                 };
                                 updateItemsMutation.mutate({
                                   orderId: order.id,
