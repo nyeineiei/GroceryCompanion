@@ -75,9 +75,17 @@ async function startServer() {
     }
 
     const PORT = Number(process.env.PORT || 5000);
-    server.listen(PORT, () => {
+    server.listen(PORT, '0.0.0.0', () => {
       log(`Server running at http://0.0.0.0:${PORT}`);
     });
+
+    // Add error handler for the server
+    server.on('error', async (error: Error) => {
+      console.error('Server error:', error);
+      await cleanup();
+      process.exit(1);
+    });
+
   } catch (error) {
     console.error('Failed to start server:', error);
     await cleanup();
@@ -113,4 +121,8 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 // Start the server
-startServer();
+startServer().catch(async (error) => {
+  console.error('Failed to start server:', error);
+  await cleanup();
+  process.exit(1);
+});
