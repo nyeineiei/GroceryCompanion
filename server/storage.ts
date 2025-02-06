@@ -87,7 +87,7 @@ export class MemStorage implements IStorage {
       id,
       customerId: order.customerId,
       shopperId: null,
-      status: "pending" as const,
+      status: "pending",
       total: 0,
       serviceFee: 5.00,
       isPaid: false,
@@ -95,7 +95,7 @@ export class MemStorage implements IStorage {
       items: order.items.map(item => ({
         ...item,
         purchased: false,
-        price: 0, // Price will be set by shopper
+        price: 0,
       })),
       notes: order.notes ?? null,
     };
@@ -138,7 +138,7 @@ export class MemStorage implements IStorage {
     const order = await this.getOrder(orderId);
     if (!order) throw new Error("Order not found");
 
-    const updated: Order = { ...order, shopperId, status: "accepted" as const };
+    const updated = { ...order, shopperId, status: "accepted" as const };
     this.orders.set(orderId, updated);
     return updated;
   }
@@ -158,7 +158,7 @@ export class MemStorage implements IStorage {
     if (!order) throw new Error("Order not found");
     if (order.isPaid) throw new Error("Order already paid");
 
-    const updated: Order = { 
+    const updated = { 
       ...order, 
       isPaid: true,
       status: "paid" as const

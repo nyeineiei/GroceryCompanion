@@ -23,35 +23,26 @@ export type OrderItem = {
 
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
-  customerId: integer("customer_id").references(() => users.id),
+  customerId: integer("customer_id").references(() => users.id).notNull(),
   shopperId: integer("shopper_id").references(() => users.id),
   status: text("status", { 
     enum: ["pending", "accepted", "shopping", "delivering", "completed", "paid"] 
-  }).default("pending"),
-  items: jsonb("items").$type<OrderItem[]>().default([]),
+  }).notNull().default("pending"),
+  items: jsonb("items").$type<OrderItem[]>().notNull().default([]),
   notes: text("notes"),
-  total: real("total").default(0),
-  serviceFee: real("service_fee").default(5.00), // Fixed service fee
-  isPaid: boolean("is_paid").default(false),
-  createdAt: timestamp("created_at").defaultNow(),
+  total: real("total").notNull().default(0),
+  serviceFee: real("service_fee").notNull().default(5.00),
+  isPaid: boolean("is_paid").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
 export const reviews = pgTable("reviews", {
   id: serial("id").primaryKey(),
-  orderId: integer("order_id").references(() => orders.id),
-  fromId: integer("from_id").references(() => users.id),
-  toId: integer("to_id").references(() => users.id),
+  orderId: integer("order_id").references(() => orders.id).notNull(),
+  fromId: integer("from_id").references(() => users.id).notNull(),
+  toId: integer("to_id").references(() => users.id).notNull(),
   rating: integer("rating").notNull(),
   comment: text("comment"),
-});
-
-// Update schemas to include new fields
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-  role: true,
-  name: true,
-  phone: true,
 });
 
 export const orderItemSchema = z.object({
@@ -59,6 +50,14 @@ export const orderItemSchema = z.object({
   price: z.number().min(0),
   purchased: z.boolean(),
   quantity: z.number().int().min(1),
+});
+
+export const insertUserSchema = createInsertSchema(users).pick({
+  username: true,
+  password: true,
+  role: true,
+  name: true,
+  phone: true,
 });
 
 export const insertOrderSchema = createInsertSchema(orders)
