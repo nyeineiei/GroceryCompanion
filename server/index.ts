@@ -1,7 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { db, pool } from "./db";
+import { db, pool, cleanup } from "./db";
 import { setupAuth } from "./auth";
 
 const app = express();
@@ -50,17 +50,20 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   res.status(status).json({ message });
 });
 
-(async () => {
+let server: any;
+
+async function startServer() {
   try {
     // Test database connection first
-    await pool.connect();
+    const client = await pool.connect();
+    client.release(); // Release the test connection
     console.log('Database connection successful');
 
     // Setup auth with session store before routes
     setupAuth(app);
 
     // Register API routes
-    const server = registerRoutes(app);
+    server = registerRoutes(app);
 
     // Setup Vite for development or serve static files for production
     if (app.get("env") === "development") {
@@ -77,18 +80,37 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     });
   } catch (error) {
     console.error('Failed to start server:', error);
-    await pool.end();
+    await cleanup();
     process.exit(1);
   }
-})();
+}
 
 // Handle shutdown gracefully
 process.on('SIGTERM', async () => {
   console.log('Shutting down gracefully...');
-  await pool.end();
+  if (server) {
+    server.close(() => {
+      console.log('HTTP server closed');
+    });
+  }
+  await cleanup();
+  process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+  console.log('Received SIGINT. Cleaning up...');
+  if (server) {
+    server.close(() => {
+      console.log('HTTP server closed');
+    });
+  }
+  await cleanup();
   process.exit(0);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
+
+// Start the server
+startServer();

@@ -11,18 +11,35 @@ if (!process.env.DATABASE_URL) {
   );
 }
 
-// Configure the pool with better settings for connection management
+// Configure the pool with better settings for connection management and resilience
 export const pool = new Pool({ 
   connectionString: process.env.DATABASE_URL,
-  max: 20, // maximum number of clients
-  idleTimeoutMillis: 30000, // how long a client is allowed to remain idle before being closed
-  connectionTimeoutMillis: 2000, // how long to wait for a connection
+  max: 10, // reduce max connections to prevent overload
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 5000, // increase timeout
+  retryInterval: 100, // time between connection retries
+  maxRetries: 3 // number of retries before failing
 });
 
 // Add event listeners for connection issues
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
-  process.exit(-1);
+  // Don't exit process, let the application handle reconnection
+  pool.end().catch(console.error);
+});
+
+pool.on('connect', () => {
+  console.log('New client connected to database');
 });
 
 export const db = drizzle({ client: pool, schema });
+
+// Cleanup function for graceful shutdown
+export async function cleanup() {
+  try {
+    await pool.end();
+    console.log('Database pool has ended');
+  } catch (error) {
+    console.error('Error during database cleanup:', error);
+  }
+}
