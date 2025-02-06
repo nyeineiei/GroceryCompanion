@@ -147,13 +147,20 @@ export class DatabaseStorage implements IStorage {
     shopperId: number,
     location: { latitude: number; longitude: number }
   ): Promise<Order> {
-    // Store the location where the shopper accepted the order
+    const shopperLocation = {
+      ...location,
+      timestamp: new Date().toISOString()
+    };
+
+    const estimatedDeliveryTime = calculateEstimatedDeliveryTime(location);
+
     const [order] = await db
       .update(orders)
       .set({ 
         shopperId, 
         status: "accepted",
-        shopperLocation: location, // This will be stored in the JSON column
+        shopperLocation,
+        estimatedDeliveryTime
       })
       .where(eq(orders.id, orderId))
       .returning();
@@ -224,6 +231,20 @@ export class DatabaseStorage implements IStorage {
   async getReviewsByUser(userId: number): Promise<Review[]> {
     return db.select().from(reviews).where(eq(reviews.toId, userId));
   }
+}
+
+function calculateEstimatedDeliveryTime(location: { latitude: number; longitude: number }): Date {
+  // In a real application, we would:
+  // 1. Use Google Maps API to calculate actual distance and travel time
+  // 2. Factor in average shopping time based on number of items
+  // 3. Consider traffic conditions
+
+  // For now, we'll use a simple estimation:
+  // 15 minutes for shopping + 30 minutes for delivery
+  const estimatedMinutes = 45;
+  const estimatedTime = new Date();
+  estimatedTime.setMinutes(estimatedTime.getMinutes() + estimatedMinutes);
+  return estimatedTime;
 }
 
 export const storage = new DatabaseStorage();

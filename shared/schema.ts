@@ -34,6 +34,12 @@ export const orders = pgTable("orders", {
   serviceFee: real("service_fee").notNull().default(5.00),
   isPaid: boolean("is_paid").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
+  shopperLocation: jsonb("shopper_location").$type<{
+    latitude: number;
+    longitude: number;
+    timestamp: string;
+  }>(),
+  estimatedDeliveryTime: timestamp("estimated_delivery_time"),
 });
 
 export const reviews = pgTable("reviews", {
