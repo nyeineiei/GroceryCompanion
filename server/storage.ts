@@ -196,7 +196,10 @@ export class DatabaseStorage implements IStorage {
   async processPayment(orderId: number): Promise<Order> {
     const [order] = await db
       .update(orders)
-      .set({ isPaid: true, status: "paid" })
+      .set({ 
+        isPaid: true, 
+        status: "paid"  // This ensures the order moves to history
+      })
       .where(eq(orders.id, orderId))
       .returning();
     return order;
@@ -248,10 +251,7 @@ export class DatabaseStorage implements IStorage {
       .from(orders)
       .where(and(
         eq(orders.shopperId, shopperId),
-        or(
-          eq(orders.status, "completed"),
-          eq(orders.status, "paid")
-        )
+        eq(orders.status, "paid")
       ))
       .orderBy(desc(orders.createdAt));
 
