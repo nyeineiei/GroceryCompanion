@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,9 +10,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ShoppingBag, LogOut, History } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function Navbar() {
   const { user, logoutMutation } = useAuth();
+  const [location] = useLocation();
 
   return (
     <nav className="border-b">
@@ -28,12 +30,24 @@ export default function Navbar() {
           {user && (
             <>
               <Link href={user.role === "customer" ? "/orders" : "/dashboard"}>
-                <a className="text-sm font-medium">
+                <a className={cn(
+                  "text-sm font-medium px-3 py-2 rounded-md transition-colors",
+                  (user.role === "customer" && location === "/orders") || 
+                  (user.role === "shopper" && location === "/dashboard")
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-accent hover:text-accent-foreground"
+                )}>
                   {user.role === "customer" ? "My Orders" : "Dashboard"}
                 </a>
               </Link>
               <Link href={user.role === "customer" ? "/customer/history" : "/shopper/history"}>
-                <a className="text-sm font-medium flex items-center gap-1">
+                <a className={cn(
+                  "text-sm font-medium flex items-center gap-1 px-3 py-2 rounded-md transition-colors",
+                  (user.role === "customer" && location === "/customer/history") ||
+                  (user.role === "shopper" && location === "/shopper/history")
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-accent hover:text-accent-foreground"
+                )}>
                   <History className="h-4 w-4" />
                   History
                 </a>
