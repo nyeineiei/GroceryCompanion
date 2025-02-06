@@ -84,10 +84,10 @@ export class MemStorage implements IStorage {
   async createOrder(order: InsertOrder & { customerId: number }): Promise<Order> {
     const id = this.currentOrderId++;
     const newOrder: Order = {
-      ...order,
       id,
-      status: "pending",
+      customerId: order.customerId,
       shopperId: null,
+      status: "pending" as const,
       total: 0,
       serviceFee: 5.00,
       isPaid: false,
@@ -158,11 +158,10 @@ export class MemStorage implements IStorage {
     if (!order) throw new Error("Order not found");
     if (order.isPaid) throw new Error("Order already paid");
 
-    // Mock payment processing - in real app, this would integrate with Stripe
-    const updated = { 
+    const updated: Order = { 
       ...order, 
       isPaid: true,
-      status: "paid",
+      status: "paid" as const
     };
     this.orders.set(orderId, updated);
     return updated;

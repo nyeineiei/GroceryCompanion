@@ -31,6 +31,19 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+type OrderItem = {
+  name: string;
+  quantity: number;
+  price: number;
+  purchased: boolean;
+};
+
+type SafeOrder = Order & {
+  total: number;
+  serviceFee: number;
+  items: OrderItem[];
+};
+
 export default function CustomerOrders() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -139,6 +152,7 @@ export default function CustomerOrders() {
       case "delivering":
         return <Truck className="h-5 w-5 text-blue-500 animate-pulse" />;
       case "completed":
+      case "paid":
         return <Check className="h-5 w-5 text-green-500" />;
       default:
         return null;
@@ -153,6 +167,13 @@ export default function CustomerOrders() {
     );
   }
 
+  const safeOrders = orders?.map(order => ({
+    ...order,
+    total: order.total ?? 0,
+    serviceFee: order.serviceFee ?? 5.00,
+    items: order.items ?? []
+  })) as SafeOrder[];
+
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -164,7 +185,7 @@ export default function CustomerOrders() {
         </div>
 
         <div className="grid gap-6">
-          {orders?.map((order) => (
+          {safeOrders?.map((order) => (
             <Card key={order.id}>
               <CardHeader>
                 <div className="flex justify-between items-center">
@@ -190,7 +211,7 @@ export default function CustomerOrders() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {order.items?.map((item, index) => (
+                      {order.items.map((item, index) => (
                         <TableRow key={index}>
                           <TableCell>{item.name}</TableCell>
                           <TableCell>{item.quantity}</TableCell>
@@ -261,7 +282,7 @@ export default function CustomerOrders() {
                       >
                         <Star
                           className={`h-5 w-5 ${
-                            rating <= (order.rating || 0)
+                            rating <= (order.rating ?? 0)
                               ? "fill-yellow-400 text-yellow-400"
                               : "text-muted-foreground"
                           }`}
