@@ -79,13 +79,6 @@ async function startServer() {
       log(`Server running at http://0.0.0.0:${PORT}`);
     });
 
-    // Add error handler for the server
-    server.on('error', async (error: Error) => {
-      console.error('Server error:', error);
-      await cleanup();
-      process.exit(1);
-    });
-
   } catch (error) {
     console.error('Failed to start server:', error);
     await cleanup();
