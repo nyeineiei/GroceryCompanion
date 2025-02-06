@@ -68,12 +68,19 @@ export function registerRoutes(app: Express): Server {
   });
 
   app.get("/api/orders/customer", async (req, res) => {
-    if (!req.isAuthenticated()) return res.sendStatus(401);
-    if (req.user.role !== "customer") return res.sendStatus(403);
+    if (!req.isAuthenticated()) {
+      console.log("Unauthorized access attempt to /api/orders/customer");
+      return res.sendStatus(401);
+    }
+    if (req.user.role !== "customer") {
+      console.log(`Invalid role access attempt to /api/orders/customer: ${req.user.role}`);
+      return res.sendStatus(403);
+    }
 
     try {
+      console.log(`Fetching orders for customer ${req.user.id}`);
       const orders = await storage.getOrdersByCustomer(req.user.id);
-      console.log(`Fetching orders for customer ${req.user.id}:`, orders);
+      console.log(`Found ${orders.length} orders for customer ${req.user.id}:`, orders);
       res.json(orders);
     } catch (error) {
       console.error('Error fetching customer orders:', error);

@@ -55,9 +55,15 @@ export default function CustomerOrders() {
 
   useWebSocket();
 
+  // Update the query to depend on user.id
   const { data: orders, isLoading } = useQuery<Order[]>({
-    queryKey: ["/api/orders/customer"],
-    enabled: !!user, // Only run query when user is authenticated
+    queryKey: ["/api/orders/customer", user?.id],
+    queryFn: async () => {
+      if (!user) throw new Error("Not authenticated");
+      const res = await apiRequest("GET", "/api/orders/customer");
+      return res.json();
+    },
+    enabled: !!user?.id, // Only run query when we have a user ID
   });
 
   const createOrderMutation = useMutation({
@@ -66,7 +72,7 @@ export default function CustomerOrders() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/orders/customer"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/customer", user?.id] });
       setNewOrderOpen(false);
       setItems("");
       setNotes("");
@@ -96,7 +102,7 @@ export default function CustomerOrders() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/orders/customer"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/customer", user?.id] });
       toast({
         title: "Review Submitted",
         description: "Thank you for your feedback!",
@@ -110,7 +116,7 @@ export default function CustomerOrders() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/orders/customer"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/orders/customer", user?.id] });
       toast({
         title: "Payment Successful",
         description: "Your order has been paid successfully.",
