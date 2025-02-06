@@ -1,0 +1,48 @@
+Prompt for App Development (Mobile-Friendly Website)
+Build a full-stack web application for a grocery shopping and delivery platform.
+
+Tech Stack:
+Frontend: React.js (for a smooth, mobile-friendly user experience)
+Backend: Node.js with Express (for handling orders, users, and transactions)
+Database: PostgreSQL or MongoDB (to store user profiles, orders, payments, etc.)
+Authentication: JWT-based authentication for users (customers & shoppers)
+Payments: Stripe or PayPal integration for secure transactions
+Maps & Location: Google Maps API (for shopper-customer matching & tracking)
+Real-Time Chat: Socket.io for direct communication between customers & shoppers
+Core Features to Include:
+1. User Registration & Profiles
+Customers and shoppers can sign up and log in using email, phone, or social login (Google/Facebook).
+Profile setup includes name, location, phone number, and profile picture.
+Shoppers can set availability (Online/Offline).
+2. Order Placement (For Customers)
+Customers can list groceries manually or upload a shopping list.
+Option to select a preferred grocery store or let the shopper choose.
+Customers can set special instructions (e.g., “only organic,” “no plastic bags”).
+Choose delivery time (ASAP or scheduled).
+Order total estimate before checkout.
+3. Order Matching & Assignment
+Nearby available shoppers get notified of new orders.
+Customers can choose a specific shopper or be matched automatically.
+Shoppers can accept or decline orders.
+Customers get a real-time order status update.
+4. Shopping & Payment System
+Shoppers mark items as "Purchased" and upload a photo of the receipt.
+Customers approve any changes via in-app chat before checkout.
+Secure payment via Stripe or PayPal (customers pay for groceries + service fee).
+5. Delivery & Tracking
+Real-time GPS tracking using Google Maps API.
+Customers receive estimated arrival time & live tracking updates.
+Shoppers mark orders as “Delivered” upon completion.
+6. Ratings & Reviews
+Customers can rate shoppers (1-5 stars & feedback).
+Shoppers can rate customers for clarity & politeness.
+Reviews affect future order matching.
+7. Wallet & Earnings System (For Shoppers)
+Shoppers get paid via platform wallet.
+Option to withdraw money to a bank account or PayPal.
+Earnings dashboard to track completed orders & payouts.
+8. Admin Panel (For Platform Owner)
+User management: Approve/reject shopper registrations.
+Order tracking: Monitor orders in real-time.
+Dispute resolution: Handle refund requests & complaints.
+Revenue tracking: View earnings & commission reports.
