@@ -31,6 +31,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { OrderProgress } from "@/components/order-progress";
 
 type OrderItem = {
   name: string;
@@ -205,6 +206,9 @@ export default function CustomerOrders() {
                     {order.createdAt &&
                       format(new Date(order.createdAt), "MMM d, yyyy h:mm a")}
                   </span>
+                </div>
+                <div className="mt-4">
+                  <OrderProgress status={order.status} />
                 </div>
               </CardHeader>
               <CardContent>
