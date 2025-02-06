@@ -73,6 +73,7 @@ export function registerRoutes(app: Express): Server {
 
     try {
       const orders = await storage.getOrdersByCustomer(req.user.id);
+      console.log(`Fetching orders for customer ${req.user.id}:`, orders);
       res.json(orders);
     } catch (error) {
       console.error('Error fetching customer orders:', error);

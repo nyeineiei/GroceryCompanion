@@ -57,6 +57,7 @@ export default function CustomerOrders() {
 
   const { data: orders, isLoading } = useQuery<Order[]>({
     queryKey: ["/api/orders/customer"],
+    enabled: !!user, // Only run query when user is authenticated
   });
 
   const createOrderMutation = useMutation({
