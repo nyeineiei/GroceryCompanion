@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { db, pool } from "./db";
 
 const app = express();
 app.use(express.json());
@@ -40,17 +41,21 @@ app.use((req, res, next) => {
   next();
 });
 
+// Global error handler for database connection issues
+app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+  console.error('Error:', err);
+  const status = err.status || err.statusCode || 500;
+  const message = err.message || "Internal Server Error";
+  res.status(status).json({ message });
+});
+
 (async () => {
   try {
-    const server = registerRoutes(app);
+    // Test database connection
+    await pool.connect();
+    console.log('Database connection successful');
 
-    // Error handling middleware
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      console.error('Error:', err.stack);
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
-      res.status(status).json({ message });
-    });
+    const server = registerRoutes(app);
 
     // Setup Vite for development or serve static files for production
     if (app.get("env") === "development") {
@@ -67,6 +72,19 @@ app.use((req, res, next) => {
     });
   } catch (error) {
     console.error('Failed to start server:', error);
+    // Close database pool on startup error
+    await pool.end();
     process.exit(1);
   }
 })();
+
+// Handle shutdown gracefully
+process.on('SIGTERM', async () => {
+  console.log('Shutting down gracefully...');
+  await pool.end();
+  process.exit(0);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
