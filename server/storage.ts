@@ -105,14 +105,31 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getOrdersByShopper(shopperId: number): Promise<Order[]> {
-    return db
+    const shopperOrders = await db
       .select()
       .from(orders)
-      .where(and(eq(orders.shopperId, shopperId), eq(orders.status, "accepted")));
+      .where(eq(orders.shopperId, shopperId))
+      .orderBy(desc(orders.createdAt));
+
+    // Add sequential numbers for shopper's orders
+    return shopperOrders.map((order, index) => ({
+      ...order,
+      displayOrderNumber: shopperOrders.length - index
+    }));
   }
 
   async getPendingOrders(): Promise<Order[]> {
-    return db.select().from(orders).where(eq(orders.status, "pending"));
+    const pendingOrders = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.status, "pending"))
+      .orderBy(desc(orders.createdAt));
+
+    // Add sequential numbers for pending orders
+    return pendingOrders.map((order, index) => ({
+      ...order,
+      displayOrderNumber: pendingOrders.length - index
+    }));
   }
 
   async updateOrderStatus(id: number, status: Order["status"]): Promise<Order> {

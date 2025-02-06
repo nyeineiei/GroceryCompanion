@@ -140,6 +140,20 @@ export default function ShopperDashboard() {
     }
   };
 
+  const getStatusIcon = (status: Order["status"]) => {
+    switch (status) {
+      case "shopping":
+        return <ShoppingCart className="h-5 w-5 text-blue-500 animate-bounce" />;
+      case "delivering":
+        return <Truck className="h-5 w-5 text-blue-500 animate-pulse" />;
+      case "completed":
+        return <Check className="h-5 w-5 text-green-500" />;
+      default:
+        return <ShoppingCart className="h-5 w-5 text-yellow-500" />;
+    }
+  };
+
+
   if (isPendingLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -209,7 +223,7 @@ export default function ShopperDashboard() {
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <ShoppingCart className="h-5 w-5 text-yellow-500" />
-                      Order #{order.id}
+                      Order #{order.displayOrderNumber || order.id}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -282,14 +296,8 @@ export default function ShopperDashboard() {
               <CardHeader>
                 <div className="flex justify-between items-center">
                   <CardTitle className="flex items-center gap-2">
-                    {order.status === "shopping" ? (
-                      <ShoppingCart className="h-5 w-5 text-blue-500 animate-bounce" />
-                    ) : order.status === "delivering" ? (
-                      <Truck className="h-5 w-5 text-blue-500 animate-pulse" />
-                    ) : (
-                      <Check className="h-5 w-5 text-green-500" />
-                    )}
-                    Order #{order.id}
+                    {getStatusIcon(order.status)}
+                    Order #{order.displayOrderNumber || order.id}
                   </CardTitle>
                   <span className="text-sm text-muted-foreground">
                     {order.createdAt &&
@@ -393,8 +401,8 @@ export default function ShopperDashboard() {
                     {order.status === "accepted"
                       ? "Start Shopping"
                       : order.status === "shopping"
-                      ? "Start Delivery"
-                      : "Mark as Delivered"}
+                        ? "Start Delivery"
+                        : "Mark as Delivered"}
                   </Button>
                 )}
               </CardFooter>
