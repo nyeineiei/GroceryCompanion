@@ -33,9 +33,9 @@ import {
 import { useWebSocket } from "@/hooks/use-websocket";
 import { OrderProgress } from "@/components/order-progress";
 
-const formatEstimatedTime = (estimatedTime: string | null) => {
+const formatEstimatedTime = (estimatedTime: string | Date | null) => {
   if (!estimatedTime) return null;
-  const date = new Date(estimatedTime);
+  const date = typeof estimatedTime === 'string' ? new Date(estimatedTime) : estimatedTime;
   return format(date, "h:mm a");
 };
 
@@ -280,7 +280,7 @@ export default function CustomerOrders() {
                 </div>
                 <div className="mt-4">
                   <OrderProgress status={order.status} />
-                  {order.status === "accepted" && order.estimatedDeliveryTime && (
+                  {order.estimatedDeliveryTime && (
                     <p className="text-sm text-muted-foreground mt-2">
                       Estimated delivery by {formatEstimatedTime(order.estimatedDeliveryTime)}
                     </p>

@@ -129,13 +129,15 @@ export function registerRoutes(app: Express): Server {
         });
       }
 
-      // Simple validation - in real app we'd verify against actual store locations
-      // For now, we'll trust the shopper's input that they're at a store
+      console.log('Accepting order with location:', location);
+
       const order = await storage.assignShopper(
         parseInt(req.params.id),
         req.user.id,
         location
       );
+
+      console.log('Order updated with delivery estimate:', order.estimatedDeliveryTime);
 
       // Notify customer of accepted order
       notifyUser(order.customerId, {

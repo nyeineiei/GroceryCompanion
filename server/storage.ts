@@ -153,6 +153,7 @@ export class DatabaseStorage implements IStorage {
     };
 
     const estimatedDeliveryTime = calculateEstimatedDeliveryTime(location);
+    console.log('Calculated estimated delivery time:', estimatedDeliveryTime);
 
     const [order] = await db
       .update(orders)
@@ -164,6 +165,13 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(orders.id, orderId))
       .returning();
+
+    console.log('Updated order with delivery details:', {
+      orderId,
+      estimatedDeliveryTime: order.estimatedDeliveryTime,
+      shopperLocation: order.shopperLocation
+    });
+
     return order;
   }
 
