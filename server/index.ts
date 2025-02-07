@@ -1,9 +1,21 @@
-import express, { type Request, Response, NextFunction } from "express";
 import { config } from "dotenv";
+import path from "path";
+
+// Load environment variables from .env file
+config({ path: path.resolve(__dirname, "../.env") });
+
+// Print environment variables to verify they are loaded
+console.log("Environment Variables:", process.env);
+
+import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { db, pool, cleanup } from "./db";
 import { setupAuth } from "./auth";
+
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL must be set. Did you forget to provision a database?");
+}
 
 const app = express();
 app.use(express.json());
