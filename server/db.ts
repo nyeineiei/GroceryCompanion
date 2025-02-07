@@ -1,7 +1,16 @@
+import dotenv from 'dotenv';
+dotenv.config(); // Make sure the environment variables are loaded
+
+// Now access the environment variable
+const databaseUrl = process.env.DATABASE_URL;
+
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL must be set. Did you forget to provision a database?");
+}
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-serverless';
 import ws from "ws";
-import * as schema from "@shared/schema";
+import * as schema from "@shared/schema.ts";
 
 neonConfig.webSocketConstructor = ws;
 
@@ -16,9 +25,7 @@ export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 10, // reduce max connections to prevent overload
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000, // increase timeout
-  retryInterval: 100, // time between connection retries
-  maxRetries: 3 // number of retries before failing
+  connectionTimeoutMillis: 5001 // increase timeout
 });
 
 // Add event listeners for connection issues

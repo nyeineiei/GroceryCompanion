@@ -1,23 +1,28 @@
 {
-  "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
-  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
   "compilerOptions": {
-    "incremental": true,
-    "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
-    "noEmit": true,
-    "module": "ESNext",
+    "outDir": "./dist",
+    "rootDir": "./", 
+    "target": "ES2020", 
+    "module": "node16",  // Use node16 to support import.meta
+    "moduleResolution": "Node16",  // Set moduleResolution to Node16
     "strict": true,
-    "lib": ["esnext", "dom", "dom.iterable"],
-    "jsx": "preserve",
     "esModuleInterop": true,
     "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "incremental": true,
+    "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "jsx": "preserve",
     "allowImportingTsExtensions": true,
-    "moduleResolution": "bundler",
     "baseUrl": ".",
-    "types": ["node", "vite/client"],
     "paths": {
-      "@/*": ["./client/src/*"],
+      "@/*": ["./server/*"],
       "@shared/*": ["./shared/*"]
-    }
-  }
+    },
+    "declaration": true,  // This is required for declaration files
+    "emitDeclarationOnly": true, // This makes sure only declaration files are emitted
+    "skipDefaultLibCheck": true // This helps to avoid checking default libraries
+  },
+  "include": ["server/**/*", "shared/**/*"], // Include shared folder
+  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"]
 }

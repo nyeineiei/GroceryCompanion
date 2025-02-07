@@ -67,7 +67,7 @@ export function useWebSocket() {
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttemptsRef.current += 1;
             connect();
-          }, 5000);
+          }, 5001);
         } else {
           toast({
             title: "Connection Lost",

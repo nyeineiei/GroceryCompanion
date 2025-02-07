@@ -1,9 +1,9 @@
-import { users, orders, reviews, type User, type Order, type Review, type InsertUser, type InsertOrder, type InsertReview, OrderItem } from "@shared/schema";
-import { db } from "./db";
+import { users, orders, reviews, type User, type Order, type Review, type InsertUser, type InsertOrder, type InsertReview, OrderItem } from "@shared/schema.js";
+import { db } from "./db.ts";
 import { eq, and, desc, or, not } from "drizzle-orm";
 import session from "express-session";
 import connectPg from "connect-pg-simple";
-import { pool } from "./db";
+import { pool } from "./db.ts";
 
 const PostgresSessionStore = connectPg(session);
 

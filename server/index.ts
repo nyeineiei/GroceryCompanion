@@ -1,31 +1,40 @@
-import { config } from "dotenv";
+import dotenv from "dotenv";
+dotenv.config();
+
 import path from "path";
+import express, { Request, Response, NextFunction } from "express";
+import { registerRoutes } from "./routes.ts"; 
+import { setupVite } from "./vite.ts";  // Only import setupVite as needed
+import { db, pool, cleanup } from "./db.ts";
+import { setupAuth } from "./auth.ts";
+import { Server } from "http";
+import session from 'express-session'; // Import the express-session package
 
-// Load environment variables from .env file
-config({ path: path.resolve(__dirname, "../.env") });
+const databaseUrl = process.env.DATABASE_URL;
 
-// Print environment variables to verify they are loaded
-console.log("Environment Variables:", process.env);
-
-import express, { type Request, Response, NextFunction } from "express";
-import { registerRoutes } from "./routes";
-import { setupVite, serveStatic, log } from "./vite";
-import { db, pool, cleanup } from "./db";
-import { setupAuth } from "./auth";
-
-if (!process.env.DATABASE_URL) {
-  throw new Error("DATABASE_URL must be set. Did you forget to provision a database?");
+if (!databaseUrl) {
+  throw new Error("DATABASE_URL must be set in the environment variables.");
 }
+
+console.log("Database URL:", databaseUrl);
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Add CORS headers for development
+// Add session middleware with secret from .env
+app.use(session({
+  secret: process.env.SESSION_SECRET!, // Use the secret from .env, assert it's non-nullable
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: process.env.NODE_ENV === 'production' } // Secure cookie only in production
+}));
+
+// Add CORS headers
 app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE');
-  res.header('Access-Control-Allow-Headers', 'Content-Type');
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
   next();
 });
 
@@ -33,7 +42,7 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   const start = Date.now();
   const path = req.path;
-  let capturedJsonResponse: Record<string, any> | undefined = undefined;
+  let capturedJsonResponse: Record<string, any> | undefined;
 
   const originalResJson = res.json;
   res.json = function (bodyJson, ...args) {
@@ -48,7 +57,7 @@ app.use((req, res, next) => {
       if (capturedJsonResponse) {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
-      log(logLine);
+      console.log(logLine);  // Use console.log directly for logging
     }
   });
 
@@ -57,79 +66,68 @@ app.use((req, res, next) => {
 
 // Global error handler
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  console.error('Error:', err);
+  console.error("Error:", err);
   const status = err.status || err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
-  res.status(status).json({ message });
+  res.status(status).json({ message: err.message || "Internal Server Error" });
 });
 
-let server: any;
+let server: Server;
 
 async function startServer() {
   try {
-    // Test database connection first
+    // Test database connection
     const client = await pool.connect();
-    client.release(); // Release the test connection
-    console.log('Database connection successful');
+    client.release();
+    console.log("Database connection successful");
 
-    // Setup auth with session store before routes
+    // Setup auth before routes
     setupAuth(app);
 
     // Register API routes
     server = registerRoutes(app);
 
-    // Setup Vite for development or serve static files for production
+    // Setup Vite for dev or serve static for production
     if (app.get("env") === "development") {
-      await setupVite(app, server);
-      log('Vite middleware setup complete');
+      await setupVite(app, server);  // Vite setup
+      console.log("Vite middleware setup complete");
     } else {
-      serveStatic(app);
-      log('Static file serving setup complete');
+      // Serve static files for production
+      const distPath = path.resolve(__dirname, "public");
+      app.use(express.static(distPath));
+      app.use("*", (_req, res) => {
+        res.sendFile(path.resolve(distPath, "index.html"));
+      });
+      console.log("Static file serving setup complete");
     }
 
-    const PORT = Number(process.env.PORT || 5000);
-    server.listen(PORT, '0.0.0.0', () => {
-      console.log(`Server is now running and accessible externally at http://0.0.0.0:${PORT}`);
-      log(`Server running at http://0.0.0.0:${PORT}`);
+    const PORT = Number(process.env.PORT || 5001); // Updated to 5001
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server is running at http://0.0.0.0:${PORT}`);
     });
-
   } catch (error) {
-    console.error('Failed to start server:', error);
+    console.error("Failed to start server:", error);
     await cleanup();
     process.exit(1);
   }
 }
 
-// Handle shutdown gracefully
-process.on('SIGTERM', async () => {
-  console.log('Shutting down gracefully...');
-  if (server) {
-    server.close(() => {
-      console.log('HTTP server closed');
-    });
-  }
-  await cleanup();
-  process.exit(0);
+// Graceful shutdown
+["SIGTERM", "SIGINT"].forEach((signal) =>
+  process.on(signal, async () => {
+    console.log(`Received ${signal}. Cleaning up...`);
+    if (server) server.close(() => console.log("HTTP server closed"));
+    await cleanup();
+    process.exit(0);
+  })
+);
+
+process.on("unhandledRejection", (reason, promise) => {
+  console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
 
-process.on('SIGINT', async () => {
-  console.log('Received SIGINT. Cleaning up...');
-  if (server) {
-    server.close(() => {
-      console.log('HTTP server closed');
-    });
-  }
-  await cleanup();
-  process.exit(0);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-});
-
-// Start the server
+// Start server
 startServer().catch(async (error) => {
-  console.error('Failed to start server:', error);
+  console.error("Failed to start server:", error);
   await cleanup();
   process.exit(1);
 });
